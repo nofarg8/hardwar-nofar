@@ -1,0 +1,1108 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>קוד אדום: שרת הבקרה</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;600;800;900&family=Exo+2:wght@400;700&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --neon-blue: #00f3ff;
+            --neon-green: #0aff00;
+            --neon-red: #ff003c;
+            --dark-bg: #050a14;
+            --panel-bg: rgba(10, 20, 40, 0.85);
+        }
+
+        body {
+            font-family: 'Heebo', sans-serif;
+            background-color: var(--dark-bg);
+            background-image: 
+                linear-gradient(rgba(0, 243, 255, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 243, 255, 0.03) 1px, transparent 1px),
+                radial-gradient(circle at 50% 50%, rgba(15, 30, 60, 1) 0%, rgba(5, 10, 20, 1) 100%);
+            background-size: 30px 30px, 30px 30px, 100% 100%;
+            color: #e2e8f0;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow-x: hidden;
+        }
+
+        /* Cyberpunk Card Container */
+        .cyber-card {
+            background: var(--panel-bg);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(0, 243, 255, 0.2);
+            border-radius: 1rem;
+            box-shadow: 
+                0 0 20px rgba(0, 243, 255, 0.05),
+                inset 0 0 0 1px rgba(255, 255, 255, 0.05);
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* Scanline effect */
+        .cyber-card::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(to bottom, transparent 50%, rgba(0, 0, 0, 0.1) 51%);
+            background-size: 100% 4px;
+            pointer-events: none;
+            z-index: 2;
+            opacity: 0.3;
+        }
+
+        /* Neon Glow Text */
+        .text-glow {
+            text-shadow: 0 0 10px rgba(0, 243, 255, 0.5);
+        }
+        
+        /* Cyber Button */
+        .btn-cyber {
+            background: linear-gradient(90deg, #0066cc 0%, #00aaff 100%);
+            color: white;
+            border: none;
+            position: relative;
+            z-index: 10;
+            overflow: hidden;
+            transition: all 0.3s ease;
+            box-shadow: 0 0 10px rgba(0, 170, 255, 0.3);
+            font-family: 'Exo 2', sans-serif;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        .btn-cyber::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+            transition: 0.5s;
+        }
+        
+        .btn-cyber:hover::before {
+            left: 100%;
+        }
+        
+        .btn-cyber:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 0 20px rgba(0, 170, 255, 0.6);
+            text-shadow: 0 0 8px rgba(255,255,255,0.8);
+        }
+
+        .btn-cyber:disabled {
+            background: #1e293b;
+            color: #64748b;
+            box-shadow: none;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        /* Matching Game Styles */
+        .match-item {
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+        .match-item.selected {
+            background-color: rgba(0, 243, 255, 0.2);
+            border-color: var(--neon-blue);
+            box-shadow: 0 0 15px rgba(0, 243, 255, 0.4);
+            transform: scale(1.02);
+        }
+        .match-item.matched {
+            background-color: rgba(34, 197, 94, 0.2);
+            border-color: var(--neon-green);
+            color: var(--neon-green);
+            cursor: default;
+            opacity: 0.8;
+            pointer-events: none;
+        }
+        .match-item:hover:not(.matched):not(.selected) {
+            background-color: rgba(255, 255, 255, 0.05);
+            border-color: rgba(255, 255, 255, 0.3);
+        }
+
+        /* Animations */
+        .fade-in {
+            animation: fadeIn 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px) scale(0.98); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+
+        /* Tech visuals */
+        .tech-border {
+            border: 1px solid rgba(0, 243, 255, 0.3);
+            background: rgba(0, 0, 0, 0.3);
+        }
+
+        .bsod {
+            background-color: #005bb5; /* Classic BSOD Blue */
+            color: white;
+            font-family: 'Courier New', Courier, monospace;
+            border-left: 4px solid #ffffff;
+        }
+
+        .terminal {
+            background-color: #0c0c0c;
+            color: #00ff00;
+            font-family: 'Consolas', 'Monaco', monospace;
+            border: 1px solid #333;
+            box-shadow: inset 0 0 20px rgba(0,0,0,0.8);
+        }
+
+        /* Server Switch */
+        .server-switch {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .server-switch:active {
+            transform: scale(0.95);
+        }
+        .glow-green {
+            box-shadow: 0 0 15px var(--neon-green);
+            border-color: #22c55e;
+            background-color: rgba(34, 197, 94, 0.2);
+            color: var(--neon-green);
+        }
+        
+        .shake-error {
+            animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both;
+        }
+        @keyframes shake {
+            10%, 90% { transform: translate3d(-1px, 0, 0); }
+            20%, 80% { transform: translate3d(2px, 0, 0); }
+            30%, 50%, 70% { transform: translate3d(-4px, 0, 0); }
+            40%, 60% { transform: translate3d(4px, 0, 0); }
+        }
+
+        /* Drive Selector Styles */
+        .drive-item {
+            transition: all 0.2s ease;
+            cursor: pointer;
+        }
+        .drive-item:hover {
+            transform: translateY(-5px);
+            background-color: rgba(255, 255, 255, 0.05);
+            border-color: rgba(6, 182, 212, 0.5);
+        }
+        .drive-item:active {
+            transform: scale(0.98);
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0f172a; 
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #334155; 
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #475569; 
+        }
+    </style>
+</head>
+<body class="p-2 sm:p-4">
+
+    <!-- Main Container -->
+    <div class="cyber-card w-full max-w-3xl flex flex-col min-h-[650px] relative">
+        
+        <!-- Header -->
+        <header class="p-6 text-center border-b border-white/10 relative z-10 bg-black/20">
+            <div class="flex items-center justify-between mb-2">
+                <div class="flex items-center gap-2">
+                    <div class="w-2 h-2 rounded-full bg-red-500 animate-pulse"></div>
+                    <span class="text-xs font-mono text-red-400 tracking-widest">SYSTEM ALERT: CRITICAL</span>
+                </div>
+                <div class="text-xs font-mono text-cyan-400">ID: SERVER-001</div>
+            </div>
+            
+            <h1 class="text-3xl md:text-4xl font-black text-white tracking-tight mb-1 text-glow font-[Exo_2]">
+                קוד אדום: <span class="text-cyan-400">שרת הבקרה</span>
+            </h1>
+            
+            <a href="https://www.sciencedu.online/" target="_blank" class="text-sm font-medium text-cyan-500 hover:text-cyan-300 transition-colors tracking-wide underline decoration-cyan-500/50 underline-offset-4">
+                המערכת פותחה על ידי נופר גרגרוד &lt;/&gt;
+            </a>
+
+            <!-- Progress Bar -->
+            <div class="mt-6 w-full bg-slate-800/50 rounded-full h-2 border border-slate-700/50 overflow-hidden" id="progress-container" style="display:none;">
+                <div id="progress-bar" class="bg-gradient-to-r from-cyan-600 to-cyan-400 h-full rounded-full transition-all duration-500 shadow-[0_0_10px_rgba(34,211,238,0.5)]" style="width: 0%"></div>
+            </div>
+        </header>
+
+        <!-- Game Content Area -->
+        <main id="game-content" class="flex-grow p-4 md:p-8 flex flex-col items-center justify-center text-center relative z-10">
+            <!-- Dynamic Content injected via JS -->
+            <div class="loader ease-linear rounded-full border-4 border-t-4 border-slate-200 h-12 w-12 mb-4 hidden"></div>
+        </main>
+
+        <!-- Footer -->
+        <footer class="p-4 text-center border-t border-white/5 bg-black/20 text-xs text-slate-400 relative z-10">
+            <a href="https://www.sciencedu.online/" target="_blank" class="hover:text-cyan-400 transition-colors duration-300 font-bold">
+                © 2026 כל הזכויות שמורות לנופר גרגרוד - פיתוח טכנו-פדגוגי
+            </a>
+        </footer>
+
+        <!-- Decorative corners -->
+        <div class="absolute top-0 left-0 w-16 h-16 border-t-2 border-l-2 border-cyan-500/30 rounded-tl-xl pointer-events-none"></div>
+        <div class="absolute top-0 right-0 w-16 h-16 border-t-2 border-r-2 border-cyan-500/30 rounded-tr-xl pointer-events-none"></div>
+        <div class="absolute bottom-0 left-0 w-16 h-16 border-b-2 border-l-2 border-cyan-500/30 rounded-bl-xl pointer-events-none"></div>
+        <div class="absolute bottom-0 right-0 w-16 h-16 border-b-2 border-r-2 border-cyan-500/30 rounded-br-xl pointer-events-none"></div>
+
+    </div>
+
+    <!-- JavaScript Logic -->
+    <script>
+        // === Audio System (Synthesized Sounds) ===
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+        function playTone(freq, type, duration) {
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            const osc = audioCtx.createOscillator();
+            const gainNode = audioCtx.createGain();
+            osc.type = type;
+            osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+            gainNode.gain.setValueAtTime(0.05, audioCtx.currentTime); // Lower volume
+            gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+            osc.connect(gainNode);
+            gainNode.connect(audioCtx.destination);
+            osc.start();
+            osc.stop(audioCtx.currentTime + duration);
+        }
+
+        function playClick() {
+            playTone(800, 'sine', 0.05);
+        }
+
+        function playSwitch() {
+             playTone(300, 'square', 0.05);
+             setTimeout(() => playTone(600, 'square', 0.1), 50);
+        }
+
+        // New sound for restoration
+        function playNetworkRestore() {
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            const now = audioCtx.currentTime;
+            
+            // Layer 1: Rising "Power" Sine
+            const osc1 = audioCtx.createOscillator();
+            const gain1 = audioCtx.createGain();
+            osc1.type = 'sine';
+            osc1.frequency.setValueAtTime(200, now);
+            osc1.frequency.exponentialRampToValueAtTime(2000, now + 2);
+            gain1.gain.setValueAtTime(0.1, now);
+            gain1.gain.linearRampToValueAtTime(0, now + 2);
+            
+            osc1.connect(gain1);
+            gain1.connect(audioCtx.destination);
+            osc1.start(now);
+            osc1.stop(now + 2);
+
+            // Layer 2: "Connection" Square waves
+            const osc2 = audioCtx.createOscillator();
+            const gain2 = audioCtx.createGain();
+            osc2.type = 'square';
+            osc2.frequency.setValueAtTime(100, now);
+            osc2.frequency.linearRampToValueAtTime(400, now + 0.5);
+            osc2.frequency.setValueAtTime(400, now + 0.5);
+            osc2.frequency.linearRampToValueAtTime(800, now + 1.0);
+            
+            gain2.gain.setValueAtTime(0.02, now);
+            gain2.gain.linearRampToValueAtTime(0, now + 1.5);
+
+            osc2.connect(gain2);
+            gain2.connect(audioCtx.destination);
+            osc2.start(now);
+            osc2.stop(now + 1.5);
+        }
+
+        function playCorrect() {
+            // Futuristic Chime
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            const now = audioCtx.currentTime;
+            
+            const osc1 = audioCtx.createOscillator();
+            const gain1 = audioCtx.createGain();
+            osc1.type = 'sine';
+            osc1.frequency.setValueAtTime(600, now); 
+            osc1.frequency.linearRampToValueAtTime(1200, now + 0.1);
+            
+            gain1.gain.setValueAtTime(0.1, now);
+            gain1.gain.exponentialRampToValueAtTime(0.001, now + 0.5);
+            
+            osc1.connect(gain1);
+            gain1.connect(audioCtx.destination);
+            osc1.start(now);
+            osc1.stop(now + 0.5);
+        }
+
+        function playError() {
+            // Low buzz
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = 'sawtooth';
+            osc.frequency.setValueAtTime(100, audioCtx.currentTime);
+            osc.frequency.linearRampToValueAtTime(80, audioCtx.currentTime + 0.3);
+            gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+            gain.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.3);
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start();
+            osc.stop(audioCtx.currentTime + 0.3);
+        }
+
+        // === Positive Feedback Messages ===
+        const positiveMessages = [
+            "גישה אושרה. ממשיכים.",
+            "נתונים אומתו בהצלחה.",
+            "מערכת מזהה רכיב תקין.",
+            "תיקון בוצע בהצלחה.",
+            "סנכרון הושלם. יפה מאוד.",
+            "פרוטוקול עבר בהצלחה.",
+            "התקדמות נשמרה בשרת."
+        ];
+
+        // === Game Data ===
+        const stations = [
+            {
+                id: 1,
+                title: "תחנה 1: זיהוי השקעים 🔌",
+                desc: "הטכנאי ניתק את הכבלים בבהלה. עליכם לחבר מחדש את הכבלים לשקעים הנכונים.<br><strong>לחצו על שם הכבל</strong>, ואז <strong>לחצו על שקע ה-Input המתאים</strong> בתחתית.",
+                type: "matching",
+                pairs: [
+                    { 
+                        id: 'hdmi', 
+                        name: "כבל למסך (HDMI)", 
+                        svg: `<div class="w-14 h-10 bg-gray-800 border-2 border-gray-500 rounded-sm flex items-center justify-center" title="HDMI Port">
+                                    <svg viewBox="0 0 24 16" class="w-10 h-6 text-black fill-current bg-black border border-gray-600">
+                                        <path d="M2,2 L22,2 L22,10 L18,14 L6,14 L2,10 Z" fill="#1a1a1a" stroke="gray" stroke-width="1"/>
+                                        <rect x="4" y="6" width="16" height="1" fill="#444"/>
+                                    </svg>
+                                </div>`
+                    },
+                    { 
+                        id: 'usb', 
+                        name: "כבל עכבר (USB)", 
+                        svg: `<div class="w-12 h-10 bg-gray-800 border-2 border-gray-500 rounded-sm flex items-center justify-center" title="USB Port">
+                                    <div class="w-8 h-4 bg-black border border-gray-600 relative">
+                                        <div class="w-full h-1/2 bg-gray-700 absolute top-0 left-0"></div>
+                                    </div>
+                                </div>`
+                    },
+                    { 
+                        id: 'lan', 
+                        name: "כבל רשת (LAN)", 
+                        svg: `<div class="w-12 h-10 bg-gray-800 border-2 border-gray-500 rounded-sm relative flex items-center justify-center" title="LAN Port">
+                                    <svg viewBox="0 0 24 24" class="w-8 h-8 text-black fill-current">
+                                        <path d="M4 4h16v10h-2v4h-2v-4h-8v4h-2v-4h-2z" stroke="gray" stroke-width="1"/>
+                                    </svg>
+                                </div>`
+                    }
+                ],
+                hint: "רמז: ה-HDMI הוא טרפזי, ה-LAN מרובע עם 'קליפס', וה-USB מלבני ושטוח."
+            },
+            {
+                id: 2,
+                title: "תחנה 2: סימני חיים 🔊",
+                desc: "המחשב מנסה להידלק אך המסך שחור. נשמעים <strong>3 צפצופים קצרים</strong>.<br>לפי קוד היצרן, באיזה רכיב התקלה?",
+                visual: `<div class="p-6 bg-black/40 rounded-lg border border-red-900/50 mb-4">
+                            <div class="animate-pulse text-red-500 text-6xl mb-2 filter drop-shadow-[0_0_10px_rgba(239,68,68,0.8)]"><i class="fas fa-volume-up"></i></div>
+                            <span class="font-mono text-red-400 text-sm tracking-widest">ERROR CODE: BEEP-BEEP-BEEP</span>
+                         </div>`,
+                type: "choice",
+                options: [
+                    "המעבד (CPU)",
+                    "ספק הכוח (Power Supply)",
+                    "זיכרון הגישה האקראית (RAM)"
+                ],
+                correct: 2,
+                hint: "רמז: מדובר ברכיב שאחראי על הזיכרון לטווח קצר, זה שמתאפס ומוחק את המידע כשמכבים את המחשב."
+            },
+            {
+                id: 3,
+                title: "תחנה 3: מבט מבפנים 🧩",
+                desc: "על לוח האם מסומנים רכיבים באותיות.<br><strong>L</strong>: מאוורר | <strong>O</strong>: סוללת גיבוי | <strong>C</strong>: כרטיס זיכרון | <strong>K</strong>: כונן קשיח<br>מהו הקוד המורכב מהרכיב שאוגר מידע קבוע + סוללת הגיבוי?",
+                visual: `<div class="bg-green-900/20 border border-green-500/30 p-4 rounded-lg my-4 relative h-40 w-full max-w-xs mx-auto overflow-hidden">
+                            <!-- Circuit Pattern -->
+                            <div class="absolute inset-0 opacity-20" style="background-image: radial-gradient(#22c55e 1px, transparent 1px); background-size: 10px 10px;"></div>
+                            
+                            <span class="absolute top-3 left-3 text-green-400 font-bold bg-black/60 px-2 py-1 rounded border border-green-500/50 text-xs">L [FAN]</span>
+                            <span class="absolute bottom-3 right-3 text-green-400 font-bold bg-black/60 px-2 py-1 rounded border border-green-500/50 text-xs">O [BAT]</span>
+                            <span class="absolute top-3 right-3 text-green-400 font-bold bg-black/60 px-2 py-1 rounded border border-green-500/50 text-xs">C [RAM]</span>
+                            <span class="absolute bottom-3 left-3 text-green-400 font-bold bg-black/60 px-2 py-1 rounded border border-green-500/50 text-xs">K [HDD]</span>
+                            <div class="absolute inset-0 flex items-center justify-center opacity-30"><i class="fas fa-microchip text-7xl text-green-500"></i></div>
+                         </div>`,
+                type: "input",
+                placeholder: "הכניסו את האותיות (למשל LC)",
+                correct: ["KO", "OK", "ko", "ok"],
+                hint: "רמז: חפשו את הרכיב הגדול ששומר את כל הקבצים והתמונות, ואת הרכיב העגול והכסוף ששומר על השעון."
+            },
+            {
+                id: 4,
+                title: "תחנה 4: המכשיר הטובע 📱",
+                desc: "הטלפון המבצעי נפל למים! מהו סדר הפעולות <strong>הקריטי</strong> להצלת המכשיר?",
+                visual: `<div class="text-blue-400 text-6xl my-4 drop-shadow-[0_0_15px_rgba(59,130,246,0.6)]"><i class="fas fa-mobile-alt fa-shake"></i><span class="text-3xl ml-2">💦</span></div>`,
+                type: "choice",
+                options: [
+                    "לייבש במגבת > לכבות > להוציא סים",
+                    "לכבות מיד > לייבש במגבת > להוציא סים > לייבש 48 שעות",
+                    "לחבר למטען > לייבש בפן > לכבות",
+                    "להכניס לאורז > להמשיך להשתמש > לכבות"
+                ],
+                correct: 1,
+                hint: "רמז: מים מוליכים חשמל. הפעולה הראשונה והחשובה ביותר היא למנוע מהחשמל לזרום במעגלים הרטובים (למנוע קצר)."
+            },
+            {
+                id: 5,
+                title: "תחנה 5: חיפוש טכנולוגי 🔍",
+                desc: "הופיע מסך כחול עם השגיאה: <code>WHEA_UNCORRECTABLE_ERROR</code>.<br>חפשו בגוגל: איזה רכיב חומרה בדרך כלל גורם לכך כשהוא מתחמם?",
+                visual: `<div class="bsod p-6 rounded text-left text-sm my-4 shadow-inner w-full max-w-md font-mono relative overflow-hidden">
+                            <div class="absolute top-0 left-0 w-full h-1 bg-white/20 animate-pulse"></div>
+                            <span class="text-4xl block mb-2">:(</span>
+                            Your PC ran into a problem and needs to restart.<br><br>
+                            <span class="bg-white/10 px-1">Stop Code: WHEA_UNCORRECTABLE_ERROR</span>
+                         </div>`,
+                type: "input",
+                placeholder: "שם הרכיב...",
+                correct: ["מעבד", "CPU", "cpu", "PROCESSOR", "processor"],
+                hint: "רמז: זהו ה'מוח' של המחשב שמבצע את החישובים ונוטה להתחמם תחת עומס."
+            },
+            {
+                id: 6,
+                title: "תחנה 6: הצפנת הסייבר 🔐",
+                desc: "המקלדת הוירטואלית מוצפנת. היעזרו במקרא כדי לפצח את הקוד שמופיע למטה.<br>רמז: פענחו משמאל לימין (אנגלית).",
+                visual: `<div class="bg-slate-800 text-white p-4 rounded-lg font-mono text-lg my-4 w-full border border-slate-600">
+                            <div class="grid grid-cols-3 gap-2 text-xs sm:text-sm text-slate-400 border-b border-slate-600 pb-3 mb-3">
+                                <div class="bg-slate-900 p-1 rounded">🖱️=L</div> <div class="bg-slate-900 p-1 rounded">📡=I</div> <div class="bg-slate-900 p-1 rounded">🔌=O</div>
+                                <div class="bg-slate-900 p-1 rounded">📺=N</div> <div class="bg-slate-900 p-1 rounded">💿=E</div> <div class="bg-slate-900 p-1 rounded">⚡=A</div>
+                            </div>
+                            <div class="text-center">
+                                <span class="block text-xs text-cyan-500 mb-1 tracking-widest">ENCRYPTED SIGNAL:</span>
+                                <span class="text-2xl sm:text-3xl tracking-[0.2em] text-green-400 font-bold drop-shadow-[0_0_5px_rgba(74,222,128,0.5)]" dir="ltr">🔌📺🖱️📡📺💿</span>
+                            </div>
+                         </div>`,
+                type: "input",
+                placeholder: "הכניסו את המילה באנגלית...",
+                correct: ["ONLINE", "online", "Online"],
+                hint: "רמז: הביטו במקרא למעלה. כל סמל מייצג אות. התחילו מהסמל השמאלי ביותר (🔌) והמשיכו ימינה."
+            },
+            {
+                id: 7,
+                title: "תחנה 7: חידת ה-IP 🌐",
+                desc: "לפניכם <strong>שורת הפקודה</strong> (Command Prompt).<br>זהו את שורת ה-<strong>IPv4 Address</strong> וחשבו את סכום ארבעת המספרים שלה.",
+                visual: `<div class="terminal p-4 rounded text-left text-xs sm:text-sm my-4 shadow-lg w-full dir-ltr relative">
+                            <div class="absolute top-2 right-2 text-gray-500 text-[10px]">CMD.EXE</div>
+                            <span class="text-white">C:\\Users\\Admin></span> ipconfig<br><br>
+                            Ethernet adapter Ethernet:<br>
+                            &nbsp;&nbsp; IPv4 Address. . . . . : <span class="text-yellow-300">192.168.10.20</span><br>
+                            &nbsp;&nbsp; Subnet Mask . . . . . : 255.255.255.0<br>
+                            &nbsp;&nbsp; Default Gateway . . . : 10.0.0.138
+                         </div>`,
+                type: "input",
+                placeholder: "סכום המספרים (למשל: 300)",
+                correct: ["390"], // 192+168+10+20 = 390
+                hint: "רמז: התעלמו משורות ה-Mask וה-Gateway. התמקדו רק בכתובת המחשב (IPv4) וחברו את המספרים שלה."
+            },
+            {
+                id: 8,
+                title: "תחנה 8: שומר הסף 🛡️",
+                desc: "יש חשד לפריצה חיצונית! עליכם להפעיל את הרכיב שחוסם גישה לא מורשית מהאינטרנט.<br>איך נקרא הרכיב הזה?",
+                visual: `<div class="flex justify-center gap-6 my-4 text-4xl p-4 bg-slate-900/50 rounded-full border border-slate-700">
+                            <i class="fas fa-bug text-red-500 opacity-50"></i>
+                            <div class="w-px h-10 bg-slate-700"></div>
+                            <i class="fas fa-fire text-orange-500 animate-pulse filter drop-shadow-[0_0_8px_orange]"></i>
+                            <i class="fas fa-shield-alt text-slate-300"></i>
+                         </div>`,
+                type: "input",
+                placeholder: "שם הרכיב...",
+                correct: ["FIREWALL", "firewall", "חומת אש", "פיירוול", "Firewall"],
+                hint: "רמז: זוהי מערכת שמתפקדת כמו 'קיר' שחוסם סכנות. באנגלית זהו שילוב של 'אש' ו'קיר'."
+            },
+            {
+                id: 9,
+                title: "תחנה 9: מבוך הפיקסלים 📺",
+                desc: "התצוגה הנוכחית מטושטשת. עליכם להגדיר את הרזולוציה הנכונה ל-Full HD.<br>מהו המספר שמייצג את <strong>גובה</strong> התמונה ברזולוציית Full HD?",
+                visual: `<div class="flex justify-center items-end gap-4 sm:gap-8 my-6">
+                            <div class="flex flex-col items-center opacity-50 scale-90">
+                                <div class="w-24 h-16 bg-slate-800 border border-slate-600 flex items-center justify-center blur-[2px] mb-2 rounded">
+                                    <i class="fas fa-map text-slate-400 text-xl"></i>
+                                </div>
+                                <span class="text-[10px] font-mono bg-slate-800 px-2 py-1 rounded text-slate-400">640x480</span>
+                            </div>
+                            <div class="flex flex-col items-center">
+                                <div class="w-32 h-20 bg-slate-800 border-2 border-cyan-500 flex items-center justify-center shadow-[0_0_20px_rgba(6,182,212,0.3)] mb-2 rounded relative">
+                                    <i class="fas fa-map text-cyan-400 text-2xl"></i>
+                                    <div class="absolute -top-2 -right-2 w-2 h-2 bg-green-500 rounded-full animate-ping"></div>
+                                </div>
+                                <span class="text-xs font-bold font-mono bg-cyan-900/30 text-cyan-400 px-3 py-1 rounded border border-cyan-500/30">TARGET: 1920x1080</span>
+                            </div>
+                         </div>`,
+                type: "choice",
+                options: [
+                    "480",
+                    "720",
+                    "1080",
+                    "1920"
+                ],
+                correct: 2,
+                hint: "רמז: רזולוציה נכתבת כ-רוחב X גובה. חפשו את המספר הימני (הקטן יותר) ברזולוציית היעד."
+            },
+            {
+                id: 10,
+                title: "תחנה 10: פאזל הקיבולת 💾",
+                desc: "צריך לגבות <strong>400GB</strong> של מידע.<br>לפניכם נתוני המקום הפנוי בכוננים, <strong>לחצו על הכונן היחיד שיכול להכיל את המידע</strong>:<br><div class='mt-2 bg-slate-800/80 p-3 rounded text-sm text-right border border-slate-600 font-mono text-green-400' dir='rtl'><span dir='ltr' class='text-white'>C:</span> FREE <span dir='ltr'>250GB</span><br><span dir='ltr' class='text-white'>D:</span> FREE <span dir='ltr'>2TB</span><br><span dir='ltr' class='text-white'>E:</span> FREE <span dir='ltr'>64GB</span></div>",
+                type: "drive-selector",
+                drives: [
+                    { id: 'C', name: 'Drive C', icon: 'fas fa-hdd', label: 'C:' },
+                    { id: 'D', name: 'Drive D', icon: 'fas fa-hdd', label: 'D:' },
+                    { id: 'E', name: 'Drive E', icon: 'fab fa-usb', label: 'E:' }
+                ],
+                correct: 'D',
+                hint: "רמז: שימו לב ליחידות המידה. זכרו ש-1TB שווה ל-1000GB. איזה כונן הכי גדול?"
+            },
+            {
+                id: 11,
+                title: "תחנה 11: אתחול פיזי 🔌",
+                desc: "כל הרכיבים תקינים. כעת עליכם להפעיל את ארון השרתים.<br>הפעילו את המכשירים לפי <strong>סדר ההדלקה התקין</strong> (מהחשמל ועד למידע) כדי למנוע קצר.",
+                type: "interactive-sequence",
+                // Visual handled by specific renderer
+            }
+        ];
+
+        let currentStationIndex = 0;
+
+        // === DOM Elements ===
+        const gameContent = document.getElementById('game-content');
+        const progressBar = document.getElementById('progress-bar');
+        const progressContainer = document.getElementById('progress-container');
+
+        // === Logic ===
+
+        function initGame() {
+            renderWelcome();
+        }
+
+        function renderWelcome() {
+            gameContent.innerHTML = `
+                <div class="fade-in w-full max-w-2xl flex flex-col items-center">
+                    
+                    <!-- Canva Embed Container -->
+                    <div class="w-full relative shadow-2xl rounded-xl overflow-hidden border border-slate-700 bg-black mb-6" style="padding-top: 56.25%;">
+                        <iframe loading="lazy" 
+                            style="position: absolute; width: 100%; height: 100%; top: 0; left: 0; border: none; padding: 0; margin: 0;"
+                            src="https://www.canva.com/design/DAG_54gCHdk/PZBezB56jba0Nxq73wRQtw/watch?embed" 
+                            allowfullscreen="allowfullscreen" 
+                            allow="fullscreen">
+                        </iframe>
+                    </div>
+
+                    <p class="text-slate-300 mb-8 leading-relaxed text-lg max-w-lg">
+                        <strong class="text-cyan-400">התראת אבטחה:</strong> העיר תחת מתקפת סייבר.
+                        <br>עליכם לאתחל את שרת הבקרה לפני קריסת המערכות הכללית.
+                        האם אתם מוכנים למשימה?
+                    </p>
+                    
+                    <button onclick="playClick(); startGame()" class="btn-cyber py-4 px-12 rounded font-bold text-xl tracking-wider w-full sm:w-auto">
+                        <i class="fas fa-power-off mr-2"></i> אתחול משימה
+                    </button>
+                </div>
+            `;
+        }
+
+        function startGame() {
+            currentStationIndex = 0;
+            progressContainer.style.display = 'block';
+            updateProgress();
+            renderStation();
+        }
+
+        function updateProgress() {
+            const percent = ((currentStationIndex) / stations.length) * 100;
+            progressBar.style.width = `${percent}%`;
+        }
+
+        function renderStation() {
+            const station = stations[currentStationIndex];
+            
+            // Special Handlers
+            if (station.type === 'interactive-sequence') {
+                renderSequenceGame(station);
+                return;
+            }
+            if (station.type === 'matching') {
+                renderMatchingGame(station);
+                return;
+            }
+            if (station.type === 'drive-selector') {
+                renderDriveSelector(station);
+                return;
+            }
+
+            let inputHTML = '';
+            
+            if (station.type === "choice") {
+                const instruction = station.choiceInstruction ? 
+                    `<div class="mb-3 text-cyan-400 text-sm font-bold bg-black/40 p-2 rounded border border-cyan-500/30 inline-flex items-center shadow-[0_0_10px_rgba(6,182,212,0.2)]"><i class="fas fa-long-arrow-alt-left ml-2 text-cyan-300"></i> ${station.choiceInstruction}</div>` 
+                    : '';
+
+                inputHTML = `<div class="flex flex-col items-center w-full max-w-md mt-6">
+                    ${instruction}
+                    <div class="grid gap-3 w-full">
+                    ${station.options.map((opt, idx) => 
+                        `<button onclick="playClick(); checkAnswer(${idx})" class="w-full text-right bg-slate-800/50 hover:bg-cyan-900/30 border border-slate-700 hover:border-cyan-500/50 p-4 rounded transition-all text-slate-200 font-medium group relative overflow-hidden" dir="ltr">
+                            <span class="relative z-10 flex justify-center items-center font-mono text-xl tracking-widest">
+                                ${opt}
+                            </span>
+                        </button>`
+                    ).join('')}
+                    </div>
+                </div>`;
+            } else {
+                inputHTML = `
+                    <div class="w-full max-w-md mt-6 flex gap-2">
+                        <input type="text" id="user-input" class="flex-grow p-4 bg-slate-900 border border-slate-600 rounded text-white focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 outline-none text-center font-mono placeholder-slate-600 transition-all" placeholder="${station.placeholder}">
+                        <button onclick="playClick(); checkTextInput()" class="btn-cyber px-8 rounded font-bold">
+                            אישור
+                        </button>
+                    </div>
+                `;
+            }
+
+            gameContent.innerHTML = `
+                <div class="fade-in w-full flex flex-col items-center">
+                    <div class="flex items-center gap-2 mb-4">
+                        <span class="bg-cyan-900/30 text-cyan-400 text-xs font-bold px-3 py-1 rounded border border-cyan-500/30 font-mono">STATION ${String(currentStationIndex + 1).padStart(2, '0')}</span>
+                        <div class="h-px w-10 bg-slate-700"></div>
+                        <span class="text-slate-500 text-xs font-mono">STATUS: PENDING</span>
+                    </div>
+                    
+                    <h2 class="text-2xl md:text-3xl font-bold text-white mb-3 text-glow">${station.title}</h2>
+                    <div class="text-slate-300 mb-6 text-lg w-full max-w-2xl leading-relaxed">${station.desc}</div>
+                    
+                    <div class="w-full flex justify-center py-2">${station.visual}</div>
+                    
+                    ${inputHTML}
+                    <div id="feedback" class="mt-6 min-h-[50px] font-bold text-sm w-full max-w-md"></div>
+                </div>
+            `;
+
+            // Add enter key listener for input
+            if(station.type === 'input') {
+                const input = document.getElementById("user-input");
+                input.addEventListener("keypress", function(event) {
+                    if (event.key === "Enter") {
+                        playClick();
+                        checkTextInput();
+                    }
+                });
+                input.focus();
+            }
+        }
+
+        // === Matching Game Logic ===
+        let selectedMatchItem = null;
+        let completedMatches = 0;
+        let matchState = {}; // Track completed matches
+
+        function renderMatchingGame(station) {
+            selectedMatchItem = null;
+            completedMatches = 0;
+            matchState = {};
+
+            gameContent.innerHTML = `
+                <div class="fade-in w-full flex flex-col items-center">
+                    <div class="flex items-center gap-2 mb-4">
+                        <span class="bg-cyan-900/30 text-cyan-400 text-xs font-bold px-3 py-1 rounded border border-cyan-500/30 font-mono">STATION ${String(currentStationIndex + 1).padStart(2, '0')}</span>
+                        <div class="h-px w-10 bg-slate-700"></div>
+                        <span class="text-slate-500 text-xs font-mono">STATUS: PENDING</span>
+                    </div>
+                    
+                    <h2 class="text-2xl md:text-3xl font-bold text-white mb-3 text-glow">${station.title}</h2>
+                    <div class="text-slate-300 mb-6 text-lg w-full max-w-2xl leading-relaxed">${station.desc}</div>
+
+                    <div class="flex flex-col gap-8 w-full max-w-3xl" id="matching-container">
+                        <!-- Source Items (Names) -->
+                        <div class="grid grid-cols-3 gap-4" id="match-sources">
+                            ${station.pairs.map(pair => `
+                                <div onclick="selectMatchSource('${pair.id}')" id="source-${pair.id}" class="match-item bg-slate-800 border border-slate-600 rounded-lg p-4 flex items-center justify-center text-center font-bold text-slate-300 hover:text-white">
+                                    ${pair.name}
+                                </div>
+                            `).join('')}
+                        </div>
+
+                        <!-- Target Items (Icons) -->
+                        <div class="grid grid-cols-3 gap-4" id="match-targets">
+                            ${/* We render targets. For simplicity in matching, let's keep visual order but shuffling is ideal. To force user to look, we can shuffle here if needed. Let's shuffle targets visually. */
+                              station.pairs.slice().sort(() => Math.random() - 0.5).map(pair => ` 
+                                <div onclick="selectMatchTarget('${pair.id}')" id="target-${pair.id}" class="match-item bg-slate-900 border border-slate-700 rounded-lg p-4 h-24 flex items-center justify-center text-4xl text-slate-400 hover:text-cyan-400">
+                                    ${pair.svg}
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+
+                    <div id="feedback" class="mt-6 min-h-[50px] font-bold text-sm w-full max-w-md"></div>
+                </div>
+            `;
+        }
+
+        function selectMatchSource(id) {
+            if (matchState[id]) return; // Already matched
+            
+            playClick();
+            // Deselect others
+            document.querySelectorAll('#match-sources .match-item').forEach(el => el.classList.remove('selected'));
+            
+            // Select this one
+            const el = document.getElementById(`source-${id}`);
+            el.classList.add('selected');
+            selectedMatchItem = id;
+        }
+
+        function selectMatchTarget(targetId) {
+            if (!selectedMatchItem) return; // No source selected
+            if (matchState[targetId]) return; // Already matched target
+
+            const feedback = document.getElementById('feedback');
+            
+            if (selectedMatchItem === targetId) {
+                // Correct Match
+                playSwitch(); // Using a nice sound
+                
+                // Mark as matched
+                const sourceEl = document.getElementById(`source-${selectedMatchItem}`);
+                const targetEl = document.getElementById(`target-${targetId}`);
+                
+                sourceEl.classList.remove('selected');
+                sourceEl.classList.add('matched');
+                targetEl.classList.add('matched');
+                
+                // Add Checkmark to source
+                sourceEl.innerHTML += ' <i class="fas fa-check ml-2"></i>';
+
+                matchState[targetId] = true;
+                completedMatches++;
+                selectedMatchItem = null;
+
+                if (completedMatches === 3) {
+                    handleCorrect();
+                }
+
+            } else {
+                // Incorrect Match
+                playError();
+                feedback.innerHTML = `<div class="bg-red-900/20 border border-red-500/50 text-red-300 p-2 rounded flex items-center gap-2 justify-center"><i class="fas fa-times-circle"></i> טעות, נסו שוב</div>`;
+                
+                const container = document.getElementById('matching-container');
+                container.classList.add('shake-error');
+                setTimeout(() => {
+                    container.classList.remove('shake-error');
+                    feedback.innerHTML = '';
+                }, 500);
+                
+                // Reset selection
+                document.querySelectorAll('.match-item.selected').forEach(el => el.classList.remove('selected'));
+                selectedMatchItem = null;
+            }
+        }
+
+        // === Drive Selector Logic ===
+        function renderDriveSelector(station) {
+            gameContent.innerHTML = `
+                <div class="fade-in w-full flex flex-col items-center">
+                    <div class="flex items-center gap-2 mb-4">
+                        <span class="bg-cyan-900/30 text-cyan-400 text-xs font-bold px-3 py-1 rounded border border-cyan-500/30 font-mono">STATION ${String(currentStationIndex + 1).padStart(2, '0')}</span>
+                        <div class="h-px w-10 bg-slate-700"></div>
+                        <span class="text-slate-500 text-xs font-mono">STATUS: PENDING</span>
+                    </div>
+                    
+                    <h2 class="text-2xl md:text-3xl font-bold text-white mb-3 text-glow">${station.title}</h2>
+                    <div class="text-slate-300 mb-6 text-lg w-full max-w-2xl leading-relaxed">${station.desc}</div>
+
+                    <div class="flex justify-around my-6 w-full max-w-md bg-slate-900/50 p-6 rounded-xl border border-slate-800 gap-4">
+                        ${station.drives.map(drive => `
+                            <div onclick="checkDriveSelection('${drive.id}')" class="drive-item flex flex-col items-center p-4 rounded-lg bg-slate-800 border border-slate-600 hover:border-cyan-500 group">
+                                <i class="${drive.icon} text-4xl text-slate-400 group-hover:text-cyan-400 mb-2 transition-colors"></i>
+                                <span class="text-sm font-bold font-mono text-slate-300">${drive.name}</span>
+                            </div>
+                        `).join('')}
+                    </div>
+
+                    <div id="feedback" class="mt-6 min-h-[50px] font-bold text-sm w-full max-w-md"></div>
+                </div>
+            `;
+        }
+
+        function checkDriveSelection(selectedId) {
+            const station = stations[currentStationIndex];
+            if (selectedId === station.correct) {
+                handleCorrect();
+            } else {
+                handleIncorrect(station.hint);
+            }
+        }
+
+        // === Logic for Station 11 (Realistic Sequence) ===
+        // Correct Sequence: UPS (Power) -> Switch (Network) -> Server (Data)
+        let sequenceStep = 0;
+        
+        function renderSequenceGame(station) {
+             sequenceStep = 0; // Reset
+             gameContent.innerHTML = `
+                <div class="fade-in w-full flex flex-col items-center">
+                     <div class="flex items-center gap-2 mb-4">
+                        <span class="bg-purple-900/30 text-purple-400 text-xs font-bold px-3 py-1 rounded border border-purple-500/30 font-mono">FINAL STATION</span>
+                        <div class="h-px w-10 bg-purple-700"></div>
+                        <span class="text-purple-500 text-xs font-mono">STATUS: OFFLINE</span>
+                    </div>
+
+                    <h2 class="text-2xl font-bold text-white mb-2 text-glow">${station.title}</h2>
+                    <div class="text-slate-300 mb-6 text-lg w-full">${station.desc}</div>
+                    
+                    <div class="flex flex-col gap-4 w-full max-w-sm mb-6 relative p-6 bg-black/40 rounded-xl border border-slate-700 shadow-2xl" id="rack-container">
+                        <!-- Rack Rails -->
+                        <div class="absolute top-0 bottom-0 left-2 w-2 border-l border-r border-dashed border-slate-600/50"></div>
+                        <div class="absolute top-0 bottom-0 right-2 w-2 border-l border-r border-dashed border-slate-600/50"></div>
+
+                        <!-- 3. Server -->
+                        <button id="seq-btn-3" onclick="handleSequenceClick(3)" class="relative z-10 w-full h-24 bg-slate-800 rounded border-b-4 border-slate-900 flex items-center justify-between px-6 text-slate-500 font-mono shadow-lg transition-all active:scale-[0.99] group overflow-hidden">
+                            <div class="absolute inset-0 bg-slate-700/50 translate-y-full group-hover:translate-y-0 transition-transform duration-300"></div>
+                            <div class="flex flex-col items-start relative z-10">
+                                <span class="text-[10px] tracking-widest">UNIT 01 // DATA</span>
+                                <span class="text-xl font-bold group-hover:text-slate-200 transition-colors">MAIN SERVER</span>
+                            </div>
+                            <div class="w-4 h-4 rounded-full bg-red-900/50 border border-red-900 status-light transition-all duration-500 shadow-[0_0_10px_rgba(153,27,27,0.5)]"></div>
+                        </button>
+
+                        <!-- 2. Switch -->
+                        <button id="seq-btn-2" onclick="handleSequenceClick(2)" class="relative z-10 w-full h-16 bg-slate-800 rounded border-b-4 border-slate-900 flex items-center justify-between px-6 text-slate-500 font-mono shadow-lg transition-all active:scale-[0.99] group">
+                             <div class="flex flex-col items-start">
+                                <span class="text-[10px] tracking-widest">UNIT 02 // NET</span>
+                                <span class="font-bold group-hover:text-slate-200 transition-colors">CORE SWITCH</span>
+                            </div>
+                            <div class="flex gap-1.5">
+                                <div class="w-1.5 h-1.5 bg-red-900 rounded-full status-light"></div>
+                                <div class="w-1.5 h-1.5 bg-red-900 rounded-full status-light"></div>
+                                <div class="w-1.5 h-1.5 bg-red-900 rounded-full status-light"></div>
+                                <div class="w-1.5 h-1.5 bg-red-900 rounded-full status-light"></div>
+                            </div>
+                        </button>
+
+                        <!-- 1. UPS -->
+                        <button id="seq-btn-1" onclick="handleSequenceClick(1)" class="relative z-10 w-full h-28 bg-slate-900 rounded border-b-4 border-black flex items-center justify-between px-6 text-slate-500 font-mono shadow-lg transition-all active:scale-[0.99] group border-t border-slate-700">
+                            <div class="flex flex-col items-start">
+                                <span class="text-[10px] tracking-widest">UNIT 03 // PWR</span>
+                                <span class="text-2xl font-bold group-hover:text-slate-200 transition-colors">UPS BACKUP</span>
+                            </div>
+                            <div class="flex flex-col items-center gap-1">
+                                <span class="text-[8px]">MAINS</span>
+                                <div class="w-6 h-6 rounded-full bg-red-900/50 border border-red-900 status-light transition-colors duration-500"></div>
+                            </div>
+                        </button>
+
+                    </div>
+
+                    <div id="feedback" class="min-h-[40px] font-bold text-sm text-center"></div>
+                </div>
+            `;
+        }
+
+        function handleSequenceClick(clickedId) {
+            const feedback = document.getElementById('feedback');
+            const rack = document.getElementById('rack-container');
+
+            // Logic: Must click 1 -> 2 -> 3
+            // Current required step is sequenceStep + 1
+            const requiredId = sequenceStep + 1;
+
+            if (clickedId === requiredId) {
+                // Correct Step
+                playSwitch();
+                sequenceStep++;
+                
+                // Update Visuals for correct click
+                const btn = document.getElementById(`seq-btn-${clickedId}`);
+                const lights = btn.querySelectorAll('.status-light');
+                
+                lights.forEach(l => {
+                    l.classList.remove('bg-red-900', 'bg-red-900/50', 'border-red-900');
+                    l.classList.add('bg-green-400', 'shadow-[0_0_8px_#4ade80]', 'border-green-500');
+                });
+                
+                btn.classList.add('border-green-900/50', 'text-green-100', 'bg-slate-800');
+                btn.classList.remove('text-slate-500');
+                
+                // Add specific sound/feel per step
+                if (clickedId === 1) feedback.innerHTML = `<span class="text-green-400 font-mono text-xs">> POWER RESTORED. INITIALIZING NETWORK...</span>`;
+                if (clickedId === 2) feedback.innerHTML = `<span class="text-green-400 font-mono text-xs">> NETWORK ONLINE. CONNECTING TO DATA...</span>`;
+                
+                if (sequenceStep === 3) {
+                    playNetworkRestore(); // NEW CALL
+                    feedback.innerHTML = `<span class="text-green-400 font-mono text-xs">> SERVER ONLINE. BOOTING OS...</span>`;
+                    setTimeout(finishGame, 2500); // Increased delay slightly to let sound play
+                }
+
+            } else {
+                // Wrong Step - Reset!
+                if (clickedId > sequenceStep + 1) { // Clicked something ahead of time
+                     playError();
+                     feedback.innerHTML = `<div class="bg-red-900/30 text-red-400 p-3 rounded border border-red-500/30 flex items-center justify-center gap-2">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <span>סדר שגוי! חייבים מקור מתח פעיל לפני הכל.</span>
+                     </div>`;
+                     rack.classList.add('shake-error');
+                     setTimeout(() => rack.classList.remove('shake-error'), 500);
+                     resetSequence();
+                }
+            }
+        }
+
+        function resetSequence() {
+            sequenceStep = 0;
+            for(let i=1; i<=3; i++) {
+                const btn = document.getElementById(`seq-btn-${i}`);
+                const lights = btn.querySelectorAll('.status-light');
+                
+                btn.classList.remove('border-green-900/50', 'text-green-100', 'bg-slate-800');
+                btn.classList.add('text-slate-500');
+                
+                lights.forEach(l => {
+                    l.classList.remove('bg-green-400', 'shadow-[0_0_8px_#4ade80]', 'border-green-500');
+                    l.classList.add('bg-red-900');
+                });
+            }
+        }
+
+
+        // === Standard Check Logic ===
+
+        function checkAnswer(selectedIndex) {
+            const station = stations[currentStationIndex];
+            if (selectedIndex === station.correct) {
+                handleCorrect();
+            } else {
+                handleIncorrect(station.hint);
+            }
+        }
+
+        function checkTextInput() {
+            const inputVal = document.getElementById('user-input').value.trim();
+            const station = stations[currentStationIndex];
+            
+            // Check if input matches any of the correct variations
+            if (station.correct.includes(inputVal)) {
+                handleCorrect();
+            } else {
+                handleIncorrect(station.hint);
+            }
+        }
+
+        function handleCorrect() {
+            playCorrect();
+            const feedback = document.getElementById('feedback');
+            const randomMsg = positiveMessages[Math.floor(Math.random() * positiveMessages.length)];
+            
+            feedback.innerHTML = `
+                <div class="bg-green-900/20 border border-green-500/50 text-green-400 p-3 rounded flex items-center justify-center gap-3 animate-pulse">
+                    <i class="fas fa-check-circle text-xl"></i>
+                    <span class="tracking-wide">${randomMsg}</span>
+                </div>
+            `;
+            
+            // Disable inputs
+            const btns = document.querySelectorAll('button');
+            btns.forEach(btn => btn.disabled = true);
+            const input = document.getElementById('user-input');
+            if(input) input.disabled = true;
+
+            setTimeout(() => {
+                currentStationIndex++;
+                if (currentStationIndex < stations.length) {
+                    updateProgress();
+                    renderStation();
+                } else {
+                    finishGame();
+                }
+            }, 1500);
+        }
+
+        function handleIncorrect(hintText) {
+            playError();
+            const feedback = document.getElementById('feedback');
+            const msg = hintText || "שגיאה, נסו שוב.";
+            
+            feedback.innerHTML = `
+                <div class="bg-red-900/20 border border-red-500/50 text-red-300 p-3 rounded flex items-start gap-3">
+                    <i class="fas fa-times-circle mt-1 text-red-500"></i>
+                    <span>${msg}</span>
+                </div>
+            `;
+            
+            // Shake animation
+            const container = document.querySelector('.fade-in');
+            container.classList.remove('animate-[bounce_0.5s]'); // reset
+            void container.offsetWidth; // trigger reflow
+            container.classList.add('animate-[bounce_0.5s]');
+        }
+
+        function finishGame() {
+            playCorrect(); // Final celebration sound
+            progressBar.style.width = '100%';
+            gameContent.innerHTML = `
+                <div class="fade-in text-center max-w-lg">
+                    <div class="text-6xl mb-4 filter drop-shadow-[0_0_20px_rgba(250,204,21,0.5)]">🏆</div>
+                    <h2 class="text-3xl font-black text-white mb-2 text-glow">המשימה הושלמה!</h2>
+                    <h3 class="text-xl text-cyan-400 font-bold mb-6 tracking-wider">העיר חזרה לאונליין</h3>
+                    
+                    <div class="bg-slate-800/50 p-6 rounded-xl border border-slate-700 mb-8 backdrop-blur-sm relative overflow-hidden">
+                        <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-green-500 via-cyan-500 to-green-500"></div>
+                        <p class="text-slate-300 mb-4 leading-relaxed">
+                            כל הכבוד, צוות החירום!<br>
+                            הזנתם את הקודים, הפעלתם את השרתים והאורות בעיר נדלקו.<br>
+                            הוכחתם ידע בחומרה, רשתות ופתרון תקלות תחת לחץ.
+                        </p>
+                        <div class="text-xs text-slate-500 font-mono mt-4 border-t border-slate-700 pt-3">
+                            <i class="fas fa-terminal text-green-500 mr-1"></i> SESSION_LOG: SUCCESS (100%)
+                        </div>
+                    </div>
+
+                    <div class="mb-4">
+                        <a href="https://www.sciencedu.online/" target="_blank" class="text-cyan-400 hover:text-white transition-colors text-sm font-bold underline decoration-cyan-500/50 underline-offset-4">
+                            פותח על ידי נופר גרגרוד
+                        </a>
+                    </div>
+                    
+                    <button onclick="location.reload()" class="btn-cyber px-10 py-4 rounded font-bold inline-block no-underline text-lg">
+                        חזרה למרכז הבקרה
+                    </button>
+                </div>
+            `;
+        }
+
+        // Start
+        initGame();
+
+    </script>
+</body>
+</html>
