@@ -1007,11 +1007,14 @@
         }
 
         function checkTextInput() {
-            const inputVal = document.getElementById('user-input').value.trim();
+            // Normalize input to uppercase for case-insensitive matching
+            const inputVal = document.getElementById('user-input').value.trim().toUpperCase();
             const station = stations[currentStationIndex];
             
-            // Check if input matches any of the correct variations
-            if (station.correct.includes(inputVal)) {
+            // Check against uppercase versions of correct answers
+            const isCorrect = station.correct.some(ans => ans.toUpperCase() === inputVal);
+
+            if (isCorrect) {
                 handleCorrect();
             } else {
                 handleIncorrect(station.hint);
